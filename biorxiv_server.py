@@ -1,14 +1,29 @@
+import os
 from typing import Any, List, Dict, Optional
 import asyncio
 import logging
 from mcp.server.fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 from biorxiv_web_search import search_key_words, search_advanced, doi_get_biorxiv_metadata
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Initialize FastMCP server
-mcp = FastMCP("biorxiv")
+# Read configuration from environment
+MCP_TRANSPORT = os.environ.get("MCP_TRANSPORT", "stdio")
+MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0")
+MCP_PORT = int(os.environ.get("MCP_PORT", "8000"))
+
+# Initialize FastMCP server with host/port for HTTP transports
+mcp = FastMCP("biorxiv", host=MCP_HOST, port=MCP_PORT)
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request) -> JSONResponse:
+    """Health check endpoint for Kubernetes liveness/readiness probes."""
+    return JSONResponse({"status": "healthy", "service": "biorxiv-mcp"})
+
 
 @mcp.tool()
 async def search_biorxiv_key_words(key_words: str, num_results: int = 10) -> List[Dict[str, Any]]:
@@ -90,6 +105,7 @@ async def get_biorxiv_metadata(doi: str) -> Dict[str, Any]:
         return {"error": f"An error occurred while fetching metadata: {str(e)}"}
 
 if __name__ == "__main__":
-    logging.info("Starting bioRxiv MCP server")
-    # Initialize and run the server
-    mcp.run(transport='stdio')
+    logging.info(
+        f"Starting bioRxiv MCP server (transport={MCP_TRANSPORT}, host={MCP_HOST}, port={MCP_PORT})"
+    )
+    mcp.run(transport=MCP_TRANSPORT)

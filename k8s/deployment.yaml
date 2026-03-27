@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: biorxiv-mcp
+  labels:
+    app: biorxiv-mcp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: biorxiv-mcp
+  template:
+    metadata:
+      labels:
+        app: biorxiv-mcp
+    spec:
+      containers:
+        - name: biorxiv-mcp
+          image: biorxiv-mcp-server:latest
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          env:
+            - name: MCP_TRANSPORT
+              value: "streamable-http"
+            - name: MCP_HOST
+              value: "0.0.0.0"
+            - name: MCP_PORT
+              value: "8000"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+      restartPolicy: Always

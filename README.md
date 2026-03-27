@@ -48,10 +48,10 @@ npx -y @smithery/cli@latest install @JackKuo666/biorxiv-mcp-server --client clau
 
 #### Cursor
 
-Paste the following into Settings → Cursor Settings → MCP → Add new server: 
-- Mac/Linux  
+Paste the following into Settings → Cursor Settings → MCP → Add new server:
+- Mac/Linux
 ```s
-npx -y @smithery/cli@latest run @JackKuo666/biorxiv-mcp-server --client cursor --config "{}" 
+npx -y @smithery/cli@latest run @JackKuo666/biorxiv-mcp-server --client cursor --config "{}"
 ```
 #### Windsurf
 ```sh
@@ -115,11 +115,65 @@ Using with Cline
 
 ## 📊 Usage
 
-Start the MCP server:
+Start the MCP server (local, stdio transport):
 
 ```bash
 python biorxiv_server.py
 ```
+
+Start with HTTP transport (for network access):
+
+```bash
+MCP_TRANSPORT=streamable-http MCP_HOST=0.0.0.0 MCP_PORT=8000 python biorxiv_server.py
+```
+
+---
+
+## 🐳 Docker & Kubernetes Deployment
+
+### Build the Docker Image
+
+```bash
+docker build -t biorxiv-mcp-server:latest .
+```
+
+### Run Locally with Docker
+
+```bash
+docker run -p 8000:8000 biorxiv-mcp-server:latest
+```
+
+The server will be available at `http://localhost:8000`. Verify with:
+
+```bash
+curl http://localhost:8000/health
+```
+
+### Deploy to Kubernetes
+
+Apply the manifests:
+
+```bash
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+```
+
+Verify the deployment:
+
+```bash
+kubectl get pods -l app=biorxiv-mcp
+kubectl get svc biorxiv-mcp
+```
+
+The MCP server is exposed as a ClusterIP service at `biorxiv-mcp:8000` within the cluster. MCP clients connect to `http://biorxiv-mcp:8000/mcp/`.
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MCP_TRANSPORT` | `stdio` (local) / `streamable-http` (Docker) | Transport protocol |
+| `MCP_HOST` | `0.0.0.0` | Host to bind to |
+| `MCP_PORT` | `8000` | Port to listen on |
 
 ## 🛠 MCP Tools
 
