@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: biorxiv-mcp
+  labels:
+    app: biorxiv-mcp
+spec:
+  type: ClusterIP
+  selector:
+    app: biorxiv-mcp
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
