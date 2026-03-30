@@ -35,7 +35,7 @@ def generate_biorxiv_search_url(
     num_results=10,
     sort="relevance-rank",
 ):
-    """根据用户输入的字段生成 bioRxiv 搜索 URL"""
+    """Generate a bioRxiv search URL based on user-provided fields."""
 
     base_url = "https://www.biorxiv.org/search/"
     query_parts = []
@@ -66,7 +66,7 @@ def generate_biorxiv_search_url(
 
 
 def scrape_biorxiv_results(search_url):
-    """从 bioRxiv 搜索结果页面解析文章信息，包括 DOI"""
+    """Parse article information, including DOI, from a bioRxiv search results page."""
     response = _SESSION.get(search_url, timeout=30)
 
     if response.status_code == 200:
@@ -110,7 +110,7 @@ def scrape_biorxiv_results(search_url):
         return None
 
 def doi_get_biorxiv_metadata(doi, server="biorxiv"):
-    """使用 bioRxiv API 通过 DOI 获取文章的详细元数据"""
+    """Retrieve detailed article metadata via DOI using the bioRxiv API."""
     url = f"https://api.biorxiv.org/details/{server}/{doi}/na/json"
 
     response = _SESSION.get(url, timeout=30)
@@ -139,19 +139,19 @@ def doi_get_biorxiv_metadata(doi, server="biorxiv"):
         return None
 
 def search_key_words(key_words, num_results=10):
-    # 生成搜索 URL
+    # Generate the search URL
     search_url = generate_biorxiv_search_url(term=key_words, num_results=num_results)
 
     print("Generated URL:", search_url)
 
-    # 获取并解析搜索结果
+    # Fetch and parse the search results
     articles = scrape_biorxiv_results(search_url)
 
     return articles
 
 
 def search_advanced(term, title, author1, author2, abstract_title, text_abstract_title, section, start_date, end_date, num_results):
-    # 生成搜索 URL
+    # Generate the search URL
     search_url = generate_biorxiv_search_url(
         term,
         title=title,
@@ -167,20 +167,20 @@ def search_advanced(term, title, author1, author2, abstract_title, text_abstract
 
     print("Generated URL:", search_url)
 
-    # 获取并解析搜索结果
+    # Fetch and parse the search results
     articles = scrape_biorxiv_results(search_url)
 
     return articles
 
 
 if __name__ == "__main__":
-    # 1. search_key_words
+    # 1. Search by keywords
     key_words = "COVID-19"
     articles = search_key_words(key_words, num_results=5)
     print(articles)
 
-    # 2. search_advanced
-    # 示例：用户输入搜索参数
+    # 2. Advanced search
+    # Example: user-provided search parameters
     term = "CRISPR"
     title = "CRISPR"
     author1 = "Doudna"
@@ -194,7 +194,7 @@ if __name__ == "__main__":
     articles = search_advanced(term, title, author1, author2, abstract_title, text_abstract_title, section, start_date, end_date, num_results)
     print(articles)
 
-    # 3. doi get biorxiv metadata
+    # 3. Get bioRxiv metadata by DOI
     doi = "10.1101/2024.06.25.600517"
     metadata = doi_get_biorxiv_metadata(doi)
     print(metadata)
