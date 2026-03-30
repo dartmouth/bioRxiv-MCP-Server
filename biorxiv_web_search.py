@@ -1,22 +1,29 @@
+import logging
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 from urllib.parse import quote
 
-# Shared session and headers to reduce 403 bot-detection blocks
+logger = logging.getLogger(__name__)
+
+# Shared session with automatic retry on 403/429/500/502/503
 _SESSION = requests.Session()
+_retry = Retry(
+    total=4,
+    backoff_factor=2,  # waits 0, 2, 4, 8 seconds between retries
+    status_forcelist=[403, 429, 500, 502, 503],
+    allowed_methods=["GET"],
+    raise_on_status=False,  # don't raise, let us handle the response
+)
+_SESSION.mount("https://", HTTPAdapter(max_retries=_retry))
+_SESSION.mount("http://", HTTPAdapter(max_retries=_retry))
 _SESSION.headers.update(
     {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
         "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-        "Cache-Control": "max-age=0",
     }
 )
 
@@ -67,7 +74,9 @@ def generate_biorxiv_search_url(
 
 def scrape_biorxiv_results(search_url):
     """Parse article information, including DOI, from a bioRxiv search results page."""
-    response = _SESSION.get(search_url, timeout=30)
+    logger.info("Fetching search URL: %s", search_url)
+    response = _SESSION.get(search_url, timeout=60)
+    logger.info("Search response status: %d (after retries)", response.status_code)
 
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -106,14 +115,16 @@ def scrape_biorxiv_results(search_url):
 
         return results
     else:
-        print(f"Error: Unable to fetch data (status code: {response.status_code})")
+        logger.error(
+            "Unable to fetch search data (status code: %d)", response.status_code
+        )
         return None
 
 def doi_get_biorxiv_metadata(doi, server="biorxiv"):
     """Retrieve detailed article metadata via DOI using the bioRxiv API."""
     url = f"https://api.biorxiv.org/details/{server}/{doi}/na/json"
 
-    response = _SESSION.get(url, timeout=30)
+    response = _SESSION.get(url, timeout=60)
 
     if response.status_code == 200:
         data = response.json()
@@ -132,10 +143,14 @@ def doi_get_biorxiv_metadata(doi, server="biorxiv"):
                 "Abstract": article.get("abstract", "No abstract")
             }
         else:
-            print("No data found for DOI:", doi)
+            logger.warning("No data found for DOI: %s", doi)
             return None
     else:
-        print(f"Error: Unable to fetch metadata (status code: {response.status_code})")
+        logger.error(
+            "Unable to fetch metadata (status code: %d) for DOI: %s",
+            response.status_code,
+            doi,
+        )
         return None
 
 def search_key_words(key_words, num_results=10):
