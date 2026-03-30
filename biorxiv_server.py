@@ -44,6 +44,8 @@ async def search_biorxiv_key_words(
     )
     try:
         results = await asyncio.to_thread(search_key_words, key_words, num_results)
+        if results is None:
+            return [{"error": "No results found or failed to fetch search results"}]
         return results
     except Exception as e:
         return [{"error": f"An error occurred while searching: {str(e)}"}]
@@ -87,6 +89,8 @@ async def search_biorxiv_advanced(
             term, title, author1, author2, abstract_title, text_abstract_title,
             section, start_date, end_date, num_results
         )
+        if results is None:
+            return [{"error": "No results found or failed to fetch search results"}]
         return results
     except Exception as e:
         return [{"error": f"An error occurred while performing advanced search: {str(e)}"}]

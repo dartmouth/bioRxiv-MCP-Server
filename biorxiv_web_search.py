@@ -2,9 +2,39 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote
 
-def generate_biorxiv_search_url(term=None, title=None, author1=None, author2=None, abstract_title=None, 
-                                text_abstract_title=None, journal_code="biorxiv", section=None,
-                                start_date=None, end_date=None, num_results=10, sort="relevance-rank"):
+# Shared session and headers to reduce 403 bot-detection blocks
+_SESSION = requests.Session()
+_SESSION.headers.update(
+    {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0",
+    }
+)
+
+
+def generate_biorxiv_search_url(
+    term=None,
+    title=None,
+    author1=None,
+    author2=None,
+    abstract_title=None,
+    text_abstract_title=None,
+    journal_code="biorxiv",
+    section=None,
+    start_date=None,
+    end_date=None,
+    num_results=10,
+    sort="relevance-rank",
+):
     """根据用户输入的字段生成 bioRxiv 搜索 URL"""
 
     base_url = "https://www.biorxiv.org/search/"
@@ -27,18 +57,17 @@ def generate_biorxiv_search_url(term=None, title=None, author1=None, author2=Non
         query_parts.append(f"toc_section%3A{quote(section)}")
     if start_date and end_date:
         query_parts.append(f"limit_from%3A{start_date} limit_to%3A{end_date}")
-    
+
     query_parts.append(f"numresults%3A{num_results}")
-    query_parts.append(f"sort%3A{quote(sort)} format_result%3Astandard")
+    query_parts.append(f"sort%3A{quote(sort)}")
+    query_parts.append("format_result%3Astandard")
 
     return base_url + "%20".join(query_parts)
 
+
 def scrape_biorxiv_results(search_url):
     """从 bioRxiv 搜索结果页面解析文章信息，包括 DOI"""
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
-    }
-    response = requests.get(search_url, headers=headers)
+    response = _SESSION.get(search_url, timeout=30)
 
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -74,7 +103,7 @@ def scrape_biorxiv_results(search_url):
                     result.update(metadata)
 
             results.append(result)
-        
+
         return results
     else:
         print(f"Error: Unable to fetch data (status code: {response.status_code})")
@@ -83,12 +112,9 @@ def scrape_biorxiv_results(search_url):
 def doi_get_biorxiv_metadata(doi, server="biorxiv"):
     """使用 bioRxiv API 通过 DOI 获取文章的详细元数据"""
     url = f"https://api.biorxiv.org/details/{server}/{doi}/na/json"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
-    }
-    
-    response = requests.get(url, headers=headers)
-    
+
+    response = _SESSION.get(url, timeout=30)
+
     if response.status_code == 200:
         data = response.json()
         if 'collection' in data and len(data['collection']) > 0:
@@ -126,11 +152,18 @@ def search_key_words(key_words, num_results=10):
 
 def search_advanced(term, title, author1, author2, abstract_title, text_abstract_title, section, start_date, end_date, num_results):
     # 生成搜索 URL
-    search_url = generate_biorxiv_search_url(term, title=title, author1=author1, author2=author2, 
-                                            abstract_title=abstract_title, 
-                                            text_abstract_title=text_abstract_title,
-                                            section=section, start_date=start_date, 
-                                            end_date=end_date, num_results=num_results)
+    search_url = generate_biorxiv_search_url(
+        term,
+        title=title,
+        author1=author1,
+        author2=author2,
+        abstract_title=abstract_title,
+        text_abstract_title=text_abstract_title,
+        section=section,
+        start_date=start_date,
+        end_date=end_date,
+        num_results=num_results,
+    )
 
     print("Generated URL:", search_url)
 
@@ -140,9 +173,8 @@ def search_advanced(term, title, author1, author2, abstract_title, text_abstract
     return articles
 
 
-
 if __name__ == "__main__":
-    # 1. search_key_words 
+    # 1. search_key_words
     key_words = "COVID-19"
     articles = search_key_words(key_words, num_results=5)
     print(articles)
