@@ -10,22 +10,17 @@ logger = logging.getLogger(__name__)
 # Shared session with automatic retry on 403/429/500/502/503
 _SESSION = requests.Session()
 _retry = Retry(
-    total=4,
-    backoff_factor=2,  # waits 0, 2, 4, 8 seconds between retries
-    status_forcelist=[403, 429, 500, 502, 503],
+    total=3,
+    backoff_factor=2,  # waits 0, 2, 4 seconds between retries
+    status_forcelist=[429, 500, 502, 503],
     allowed_methods=["GET"],
     raise_on_status=False,  # don't raise, let us handle the response
 )
 _SESSION.mount("https://", HTTPAdapter(max_retries=_retry))
 _SESSION.mount("http://", HTTPAdapter(max_retries=_retry))
-_SESSION.headers.update(
-    {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Connection": "keep-alive",
-    }
-)
+# NOTE: Do NOT set custom browser-like headers — bioRxiv returns 403 when it
+# detects browser headers coming from a non-browser client.  Vanilla
+# requests defaults (python-requests User-Agent) work fine.
 
 
 def generate_biorxiv_search_url(
